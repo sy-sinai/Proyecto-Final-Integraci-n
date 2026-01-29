@@ -48,11 +48,13 @@ def start_consumer():
     def on_message(ch, method, properties, body):
         try:
             event = json.loads(body.decode())
-            print(f"💰 Evento recibido: order_id={event['order_id']}")
-
             order_id = event["order_id"]
-            status = "PAID" if order_id % 2 == 0 else "FAILED"
+            print(f"💰 Evento recibido: order_id={order_id}")
 
+            # Simulación de pago - siempre aprueba si llegó aquí (ya tiene stock)
+            # En producción aquí iría la integración con pasarela de pago
+            status = "PAID"
+            
             publish_payment_result(order_id, status)
             print(f"✅ Pago procesado: {status}")
 

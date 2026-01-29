@@ -59,6 +59,7 @@ services:
     restart: always
     depends_on:
       - rabbitmq
+      - postgres
 
   payment-service:
     build: ./payment-service
@@ -88,6 +89,23 @@ services:
       - ./inbox:/app/inbox
       - ./processed:/app/processed
       - ./error:/app/error
+
+  analytics-service:
+    build: ./analytics-service
+    container_name: analytics-service
+    restart: always
+    ports:
+      - "8083:8080"
+    depends_on:
+      - postgres
+      - rabbitmq
+
+  demo-portal:
+    build: ./demo-portal
+    container_name: demo-portal
+    restart: always
+    ports:
+      - "3000:80"
 
 
 volumes:

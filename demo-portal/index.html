@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IntegraHub - Demo Portal</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: #1a1a2e; color: #eee; min-height: 100vh; }
+        .header { background: #16213e; padding: 20px; text-align: center; border-bottom: 3px solid #0f3460; }
+        .header h1 { color: #e94560; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
+        .card { background: #16213e; border-radius: 10px; padding: 20px; border: 1px solid #0f3460; }
+        .card h2 { color: #e94560; margin-bottom: 15px; font-size: 1.2em; }
+        input, select { width: 100%; padding: 10px; margin: 5px 0 15px; border: 1px solid #0f3460; border-radius: 5px; background: #1a1a2e; color: #fff; }
+        button { background: #e94560; color: #fff; border: none; padding: 12px 25px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        button:hover { background: #ff6b6b; }
+        button:disabled { background: #666; cursor: not-allowed; }
+        .btn-secondary { background: #0f3460; }
+        .btn-secondary:hover { background: #16213e; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #0f3460; }
+        th { background: #0f3460; color: #e94560; }
+        .status { padding: 5px 10px; border-radius: 15px; font-size: 0.8em; font-weight: bold; }
+        .status-created { background: #ffd93d; color: #000; }
+        .status-validated { background: #6bcb77; color: #000; }
+        .status-paid, .status-confirmed { background: #4d96ff; color: #fff; }
+        .status-rejected, .status-failed { background: #ff6b6b; color: #fff; }
+        .health-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+        .health-item { background: #1a1a2e; padding: 15px; border-radius: 8px; text-align: center; }
+        .health-item.up { border-left: 4px solid #6bcb77; }
+        .health-item.down { border-left: 4px solid #ff6b6b; }
+        .health-status { font-size: 1.5em; }
+        #message { padding: 10px; margin: 10px 0; border-radius: 5px; display: none; }
+        #message.success { display: block; background: #6bcb77; color: #000; }
+        #message.error { display: block; background: #ff6b6b; color: #fff; }
+        .full-width { grid-column: 1 / -1; }
+        .refresh-btn { float: right; font-size: 0.8em; padding: 8px 15px; }
+        .correlation { font-family: monospace; font-size: 0.75em; color: #888; }
+        .tabs { display: flex; gap: 10px; margin-bottom: 15px; }
+        .tab { padding: 10px 20px; background: #0f3460; border-radius: 5px 5px 0 0; cursor: pointer; }
+        .tab.active { background: #e94560; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .inventory-qty { font-weight: bold; color: #6bcb77; }
+        .inventory-qty.low { color: #ffd93d; }
+        .inventory-qty.empty { color: #ff6b6b; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🔗 IntegraHub - Demo Portal</h1>
+        <p>Sistema de Integración Order-to-Cash</p>
+    </div>
+
+    <div class="container">
+        <div id="message"></div>
+
+        <!-- System Status -->
+        <div class="card full-width">
+            <h2>📊 System Status <button class="refresh-btn btn-secondary" onclick="checkHealth()">🔄 Refresh</button></h2>
+            <div id="health-status" class="health-grid">
+                <div class="health-item"><span class="health-status">⏳</span><br>Cargando...</div>
+            </div>
+        </div>
+
+        <!-- Analytics Metrics -->
+        <div class="card full-width" style="margin-bottom: 20px;">
+            <h2>📈 Analytics en Tiempo Real <button class="refresh-btn btn-secondary" onclick="loadAnalytics()">🔄</button></h2>
+            <div id="analytics-metrics" class="health-grid">
+                <div class="health-item"><span class="health-status">⏳</span><br>Cargando...</div>
+            </div>
+        </div>
+
+        <div class="grid">
+            <!-- Crear Pedido -->
+            <div class="card">
+                <h2>🛒 Crear Nuevo Pedido</h2>
+                <form id="orderForm">
+                    <label>Nombre del Cliente</label>
+                    <input type="text" id="customer_name" required placeholder="Ej: Juan Pérez">
+                    
+                    <label>Producto (SKU)</label>
+                    <select id="product" required>
+                        <option value="">-- Seleccionar producto --</option>
+                    </select>
+                    
+                    <label>Cantidad</label>
+                    <input type="number" id="quantity" min="1" value="1" required>
+                    
+                    <button type="submit">📦 Crear Pedido</button>
+                </form>
+            </div>
+
+            <!-- Inventario -->
+            <div class="card">
+                <h2>📦 Inventario Actual <button class="refresh-btn btn-secondary" onclick="loadInventory()">🔄</button></h2>
+                <div id="inventory-list">
+                    <p>Cargando inventario...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lista de Pedidos -->
+        <div class="card full-width" style="margin-top: 20px;">
+            <h2>📋 Pedidos <button class="refresh-btn btn-secondary" onclick="loadOrders()">🔄 Actualizar</button></h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Cliente</th>
+                        <th>Producto</th>
+                        <th>Cantidad</th>
+                        <th>Estado</th>
+                        <th>Correlation ID</th>
+                        <th>Fecha</th>
+                    </tr>
+                </thead>
+                <tbody id="orders-table">
+                    <tr><td colspan="7">Cargando pedidos...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const ORDER_API = 'http://localhost:8082';
+        const HUB_API = 'http://localhost:8081';
+        const ANALYTICS_API = 'http://localhost:8083';
+
+        // Cargar Analytics
+        async function loadAnalytics() {
+            try {
+                const res = await fetch(`${ANALYTICS_API}/metrics`);
+                const data = await res.json();
+                const m = data.metrics;
+                const s = data.summary;
+                
+                document.getElementById('analytics-metrics').innerHTML = `
+                    <div class="health-item up"><span class="health-status">${s.total_orders}</span><br>Órdenes Creadas</div>
+                    <div class="health-item up"><span class="health-status">${s.completed}</span><br>Completadas</div>
+                    <div class="health-item ${s.rejected > 0 ? 'down' : 'up'}"><span class="health-status">${s.rejected}</span><br>Rechazadas</div>
+                    <div class="health-item up"><span class="health-status">${s.success_rate}</span><br>Tasa Éxito</div>
+                    <div class="health-item up"><span class="health-status">${Math.round(m.total_events || 0)}</span><br>Total Eventos</div>
+                `;
+            } catch (e) {
+                document.getElementById('analytics-metrics').innerHTML = '<div class="health-item down"><span class="health-status">❌</span><br>Analytics no disponible</div>';
+            }
+        }
+
+        // Mostrar mensaje
+        function showMessage(text, type) {
+            const msg = document.getElementById('message');
+            msg.textContent = text;
+            msg.className = type;
+            setTimeout(() => msg.className = '', 4000);
+        }
+
+        // Cargar inventario
+        async function loadInventory() {
+            try {
+                const res = await fetch(`${ORDER_API}/inventory`);
+                const items = await res.json();
+                
+                const select = document.getElementById('product');
+                select.innerHTML = '<option value="">-- Seleccionar producto --</option>';
+                
+                let html = '<table><tr><th>SKU</th><th>Nombre</th><th>Stock</th><th>Precio</th></tr>';
+                
+                items.forEach(item => {
+                    // Agregar a select
+                    select.innerHTML += `<option value="${item.sku}">${item.name} (${item.quantity} disp.)</option>`;
+                    
+                    // Clase según cantidad
+                    let qtyClass = 'inventory-qty';
+                    if (item.quantity === 0) qtyClass += ' empty';
+                    else if (item.quantity < 5) qtyClass += ' low';
+                    
+                    html += `<tr>
+                        <td>${item.sku}</td>
+                        <td>${item.name}</td>
+                        <td><span class="${qtyClass}">${item.quantity}</span></td>
+                        <td>$${item.price.toFixed(2)}</td>
+                    </tr>`;
+                });
+                
+                html += '</table>';
+                document.getElementById('inventory-list').innerHTML = html || '<p>No hay productos en inventario</p>';
+            } catch (e) {
+                document.getElementById('inventory-list').innerHTML = '<p style="color:#ff6b6b">Error cargando inventario</p>';
+            }
+        }
+
+        // Cargar pedidos
+        async function loadOrders() {
+            try {
+                const res = await fetch(`${ORDER_API}/orders`);
+                const orders = await res.json();
+                
+                const tbody = document.getElementById('orders-table');
+                
+                if (orders.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7">No hay pedidos aún</td></tr>';
+                    return;
+                }
+                
+                tbody.innerHTML = orders.reverse().map(order => `
+                    <tr>
+                        <td><strong>#${order.id}</strong></td>
+                        <td>${order.customer_name}</td>
+                        <td>${order.product}</td>
+                        <td>${order.quantity}</td>
+                        <td><span class="status status-${order.status.toLowerCase()}">${order.status}</span></td>
+                        <td class="correlation">${order.correlation_id || '-'}</td>
+                        <td>${new Date(order.created_at).toLocaleString()}</td>
+                    </tr>
+                `).join('');
+            } catch (e) {
+                document.getElementById('orders-table').innerHTML = '<tr><td colspan="7" style="color:#ff6b6b">Error cargando pedidos</td></tr>';
+            }
+        }
+
+        // Crear pedido
+        document.getElementById('orderForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const data = {
+                customer_name: document.getElementById('customer_name').value,
+                product: document.getElementById('product').value,
+                quantity: parseInt(document.getElementById('quantity').value)
+            };
+            
+            try {
+                const res = await fetch(`${ORDER_API}/orders`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                if (res.ok) {
+                    const order = await res.json();
+                    showMessage(`✅ Pedido #${order.id} creado! Correlation: ${order.correlation_id}`, 'success');
+                    document.getElementById('orderForm').reset();
+                    loadOrders();
+                    setTimeout(loadInventory, 1000);
+                    // Auto-refresh para ver cambios de estado
+                    setTimeout(loadOrders, 3000);
+                    setTimeout(loadOrders, 6000);
+                } else {
+                    const err = await res.json();
+                    showMessage(`❌ Error: ${err.detail || 'Error creando pedido'}`, 'error');
+                }
+            } catch (e) {
+                showMessage('❌ Error de conexión con el servidor', 'error');
+            }
+        });
+
+        // Health check - REAL usando /status de integrahub
+        async function checkHealth() {
+            let html = '';
+            
+            try {
+                // Obtener estado real de todos los servicios
+                const res = await fetch(`${HUB_API}/status`);
+                const data = await res.json();
+                const services = data.services;
+                
+                // Order Service
+                const order = services['order-service'] || {};
+                html += `<div class="health-item ${order.status === 'UP' ? 'up' : 'down'}">
+                    <span class="health-status">${order.icon || '⚠️'}</span><br>Order Service
+                </div>`;
+                
+                // Inventory Service
+                const inv = services['inventory-service'] || {};
+                html += `<div class="health-item ${inv.status === 'UP' ? 'up' : 'down'}">
+                    <span class="health-status">${inv.icon || '⚠️'}</span><br>Inventory Svc
+                </div>`;
+                
+                // Payment Service
+                const pay = services['payment-service'] || {};
+                html += `<div class="health-item ${pay.status === 'UP' ? 'up' : 'down'}">
+                    <span class="health-status">${pay.icon || '⚠️'}</span><br>Payment Svc
+                </div>`;
+                
+                // Notification Service
+                const notif = services['notification-service'] || {};
+                html += `<div class="health-item ${notif.status === 'UP' ? 'up' : 'down'}">
+                    <span class="health-status">${notif.icon || '⚠️'}</span><br>Notification Svc
+                </div>`;
+                
+                // RabbitMQ
+                const rabbit = services['rabbitmq'] || {};
+                html += `<div class="health-item ${rabbit.status === 'UP' ? 'up' : 'down'}">
+                    <span class="health-status">${rabbit.icon || '⚠️'}</span><br>RabbitMQ
+                </div>`;
+                
+                // PostgreSQL
+                const pg = services['postgres'] || {};
+                html += `<div class="health-item ${pg.status === 'UP' ? 'up' : 'down'}">
+                    <span class="health-status">${pg.icon || '⚠️'}</span><br>PostgreSQL
+                </div>`;
+                
+            } catch (e) {
+                html = `<div class="health-item down"><span class="health-status">❌</span><br>API no disponible</div>`;
+            }
+            
+            document.getElementById('health-status').innerHTML = html;
+        }
+
+        // Auto-refresh
+        setInterval(loadOrders, 10000);
+        setInterval(loadInventory, 15000);
+        setInterval(checkHealth, 10000);
+        setInterval(loadAnalytics, 5000);  // Analytics cada 5s
+
+        // Cargar al inicio
+        checkHealth();
+        loadInventory();
+        loadOrders();
+        loadAnalytics();
+    </script>
+</body>
+</html>

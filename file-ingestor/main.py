@@ -5,7 +5,7 @@ from database import SessionLocal
 from models import InventoryItem
 
 def process_file(file_path):
-    """Procesa un archivo CSV y carga datos a BD."""
+    """Procesa un archivo CSV y SUMA cantidades al inventario existente."""
     filename = os.path.basename(file_path)
     print(f"\n📄 Procesando: {filename}")
     
@@ -21,7 +21,7 @@ def process_file(file_path):
         move_file(file_path, ERROR_DIR)
         return False
     
-    # Guardar en BD
+    # Guardar en BD - SUMANDO cantidades
     db = SessionLocal()
     try:
         saved = 0
@@ -31,19 +31,22 @@ def process_file(file_path):
             existing = db.query(InventoryItem).filter_by(sku=item_data['sku']).first()
             
             if existing:
+                # SUMAR cantidad al stock existente
+                existing.quantity += item_data['quantity']
                 existing.name = item_data['name']
-                existing.quantity = item_data['quantity']
                 existing.price = item_data['price']
                 updated += 1
+                print(f"    📦 {item_data['sku']}: +{item_data['quantity']} → Total: {existing.quantity}")
             else:
                 new_item = InventoryItem(**item_data)
                 db.add(new_item)
                 saved += 1
+                print(f"    📦 {item_data['sku']}: Nuevo item con {item_data['quantity']} unidades")
         
         db.commit()
         db.close()
         
-        print(f"  ✅ {saved} nuevos items, {updated} actualizados")
+        print(f"  ✅ {saved} nuevos items, {updated} actualizados (stock sumado)")
         move_file(file_path, PROCESSED_DIR)
         return True
     
