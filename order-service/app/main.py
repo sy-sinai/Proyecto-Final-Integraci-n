@@ -14,6 +14,11 @@ def get_db():
     finally:
         db.close()
 
+@app.get("/health")
+def health():
+    """Health check."""
+    return {"status": "ok", "service": "order-service"}
+
 @app.post("/orders", response_model=schemas.OrderResponse)
 def create_order(order: schemas.OrderCreate, db: Session = Depends(get_db)):
     return crud.create_order(db, order)

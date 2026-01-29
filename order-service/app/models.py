@@ -10,4 +10,6 @@ class Order(Base):
     product = Column(String, nullable=False)
     quantity = Column(Integer, nullable=False)
     status = Column(String, default="CREATED")
+    correlation_id = Column(String, unique=True, nullable=True, index=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

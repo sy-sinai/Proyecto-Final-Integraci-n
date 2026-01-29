@@ -42,6 +42,16 @@ services:
       - "8082:8080"
     depends_on:
       - postgres
+      - rabbitmq
+  
+  order-listener:
+    build: ./order-service
+    container_name: order-listener
+    restart: always
+    depends_on:
+      - postgres
+      - rabbitmq
+    command: ["python", "-u", "main_consumer.py"]
   
   inventory-service:
     build: ./inventory-service
@@ -53,10 +63,31 @@ services:
   payment-service:
     build: ./payment-service
     container_name: payment-service
+    restart: always
     depends_on:
       - rabbitmq
     environment:
       - RABBITMQ_HOST=rabbitmq
+
+  notification-service:
+    build: ./notification-service
+    container_name: notification-service
+    restart: always
+    depends_on:
+      - rabbitmq
+    environment:
+      - RABBITMQ_HOST=rabbitmq
+
+  file-ingestor:
+    build: ./file-ingestor
+    container_name: file-ingestor
+    restart: always
+    depends_on:
+      - postgres
+    volumes:
+      - ./inbox:/app/inbox
+      - ./processed:/app/processed
+      - ./error:/app/error
 
 
 volumes:

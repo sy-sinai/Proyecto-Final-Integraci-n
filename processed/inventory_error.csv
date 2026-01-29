@@ -1,0 +1,4 @@
+sku,name,quantity,price
+INVALID-001,Producto Sin Precio,10,INVALID_PRICE
+INVALID-002,,20,99.99
+VALID-001,Buen Producto,5,49.99

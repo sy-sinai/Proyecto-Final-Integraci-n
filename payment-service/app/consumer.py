@@ -2,13 +2,13 @@ import json
 import time
 import pika
 from app.publisher import publish_payment_result
-
-print("💳 payment consumer cargado")
+from app.dlq import setup_dlq
 
 RABBITMQ_HOST = "rabbitmq"
 EXCHANGE = "orders.exchange"
 QUEUE = "payment.queue"
 BINDING_KEY = "order.validated"
+MAX_RETRIES = 3
 
 def connect_with_retry(retries=30, delay=2):
     for i in range(retries):
@@ -22,7 +22,7 @@ def connect_with_retry(retries=30, delay=2):
     raise Exception("RabbitMQ no disponible")
 
 def start_consumer():
-    print("🚀 Payment Service iniciando...")
+    print("🚀 Payment Service iniciando (con DLQ)...")
     connection = connect_with_retry()
     channel = connection.channel()
 
@@ -39,25 +39,36 @@ def start_consumer():
         queue=QUEUE,
         routing_key=BINDING_KEY
     )
+    
+    # Configurar DLQ
+    setup_dlq(channel, QUEUE)
 
-    print("📥 Payment Service escuchando order.validated")
+    print("📥 Payment Service escuchando...")
 
     def on_message(ch, method, properties, body):
-        event = json.loads(body.decode())
-        print("💰 Evento recibido:", event)
+        try:
+            event = json.loads(body.decode())
+            print(f"💰 Evento recibido: order_id={event['order_id']}")
 
-        order_id = event["order_id"]
+            order_id = event["order_id"]
+            status = "PAID" if order_id % 2 == 0 else "FAILED"
 
-        # Lógica controlada (defendible)
-        if order_id % 2 == 0:
-            status = "PAID"
-        else:
-            status = "FAILED"
+            publish_payment_result(order_id, status)
+            print(f"✅ Pago procesado: {status}")
 
-        publish_payment_result(order_id, status)
-        print(f"✅ Pago procesado: {status}")
+            ch.basic_ack(delivery_tag=method.delivery_tag)
 
-        ch.basic_ack(delivery_tag=method.delivery_tag)
+        except Exception as e:
+            # Reintentos
+            retry_count = properties.headers.get("x-retry-count", 0) if properties.headers else 0
+            
+            if retry_count < MAX_RETRIES:
+                print(f"⚠️ Error (reintento {retry_count+1}/{MAX_RETRIES}): {e}")
+                ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
+                time.sleep(2 ** retry_count)
+            else:
+                print(f"❌ Error final, DLQ: {e}")
+                ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
 
     channel.basic_consume(queue=QUEUE, on_message_callback=on_message)
     channel.start_consuming()
