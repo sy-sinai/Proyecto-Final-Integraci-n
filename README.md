@@ -36,13 +36,9 @@ El sistema esta compuesto por los siguientes microservicios:
 
 - Docker Desktop 4.0 o superior
 - Docker Compose v2.0 o superior
+- Postgrest 
 - (Opcional) Postman para pruebas de API
 
-### Recursos del Sistema
-
-- Minimo 8 GB de RAM disponible
-- 10 GB de espacio en disco
-- Puertos disponibles: 3000, 5432, 5672, 8081, 8082, 8083, 15672
 
 ### Verificar Instalacion
 
